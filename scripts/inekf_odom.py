@@ -1,7 +1,13 @@
 #!/bin/env python3
+from dataclasses import dataclass
+from cyclonedds.idl import IdlStruct
+from cyclonedds.idl.types import sequence, float32
+from cyclonedds.domain import DomainParticipant
+from cyclonedds.pub import DataWriter
+from cyclonedds.topic import Topic
+
 
 import numpy as np
-
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, QoSHistoryPolicy
@@ -15,7 +21,11 @@ from geometry_msgs.msg import TransformStamped
 from rcl_interfaces.msg import ParameterDescriptor as PD
 from inekf import RobotState, NoiseParams, InEKF, Kinematics
 from go2_description.loader import loadGo2
+import time
 
+@dataclass
+class BodyTwistMsg(IdlStruct):
+    twist: sequence[float32]
 
 # ==============================================================================
 # Main Class
@@ -94,6 +104,11 @@ class Inekf(Node):
 
         self.filter = InEKF(initial_state, noise_params)
         self.filter.setGravity(gravity)
+        self.latest_grounded_stamp = 0
+        # 1. Setup DDS Infrastructure
+        self.participant = DomainParticipant()
+        self.topic = Topic(self.participant, "go2_odometry/twist", BodyTwistMsg)
+        self.writer = DataWriter(self.participant, self.topic)
 
     def listener_callback(self, msg):
         # Format IMU measurements
@@ -101,14 +116,20 @@ class Inekf(Node):
 
         # Feet kinematic data
         contact_list, pose_list, normed_covariance_list = self.feet_transformations(msg)
+        if any(contact_list):
+            self.latest_grounded_stamp = time.time()
+        
+        if time.time()-self.latest_grounded_stamp > 1.0 and not self.pause:
+            self.pause = True
+            self.get_logger().info("Filter not updated for too long")
 
         if self.pause:
-            if all(contact_list):
+            if sum(contact_list)>1:
                 self.pause = False
                 self.initialize_filter(msg)
-                self.get_logger().info("All feet in contact with the ground: starting filter.")
+                self.get_logger().info("Minimum of two feet are in contact: starting filter.")
             else:
-                self.get_logger().info("Waiting for all feet to touch the ground to start filter.", once=True)
+                self.get_logger().info("Waiting for at least two feet to touch the ground to start filter.", once=True)
                 return  # Skip the rest of the filter
 
         # Propagation step: using IMU
@@ -242,7 +263,6 @@ class Inekf(Node):
         # Transform to base frame
         base_pose = oMimu.act(self.imuMbase)
         base_velocity = self.imuMbase.actInv(v_imu_local)
-
         # Convert to quaternion
         base_quaternion = pin.Quaternion(base_pose.rotation)
         base_quaternion.normalize()
@@ -286,8 +306,10 @@ class Inekf(Node):
         odom_msg.twist.twist.angular.x = float(base_velocity.angular[0])
         odom_msg.twist.twist.angular.y = float(base_velocity.angular[1])
         odom_msg.twist.twist.angular.z = float(base_velocity.angular[2])
+        twist = [base_velocity.linear[0], base_velocity.linear[1], base_velocity.linear[2], base_velocity.angular[0], base_velocity.angular[1],  base_velocity.angular[2]]
 
         self.odom_publisher.publish(odom_msg)
+        self.writer.write(BodyTwistMsg(twist=twist))
 
 
 def main(args=None):

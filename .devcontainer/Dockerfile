@@ -20,12 +20,14 @@ RUN apt-get update && apt-get install -y \
 RUN cd / && git clone https://github.com/unitreerobotics/unitree_ros2 && cd /unitree_ros2/cyclonedds_ws/src && \
 git clone https://github.com/ros2/rmw_cyclonedds -b humble && git clone https://github.com/eclipse-cyclonedds/cyclonedds -b releases/0.10.x &&\
 cd .. && colcon build --packages-select cyclonedds && source /opt/ros/humble/setup.bash && colcon build
+ENV CYCLONEDDS_HOME "/unitree_ros2/cyclonedds_ws/install/cyclonedds"
+RUN source /unitree_ros2/cyclonedds_ws/install/setup.bash && cd /root && git clone https://github.com/eclipse-cyclonedds/cyclonedds-python -b releases/0.10.x && cd cyclonedds-python && python3 -m pip install .
 
 # Complile and Install eigenpy
 WORKDIR /home
 RUN source /unitree_ros2/cyclonedds_ws/install/setup.bash && python3 -m pip install scipy && python3 -m pip install --no-cache-dir eigenpy
 RUN git clone https://github.com/stack-of-tasks/eigenpy.git && cd eigenpy && mkdir build && cd build && \
-    cmake -DPYTHON_EXECUTABLE='/usr/bin/python3' -DCMAKE_BUILD_TYPE=Release  -DCMAKE_INSTALL_PREFIX=/usr  .. && make -j4 && make install
+    cmake -DPYTHON_EXECUTABLE='/usr/bin/python3' -DCMAKE_BUILD_TYPE=Release  -DCMAKE_INSTALL_PREFIX=/usr  .. && make -j20 && make install
 
 # Compile and install pinocchio
 WORKDIR /home
@@ -39,14 +41,14 @@ RUN git clone https://github.com/stack-of-tasks/pinocchio.git && cd pinocchio &&
           -DBUILD_TESTING=OFF \
           -DCMAKE_INSTALL_PREFIX=/usr \
           -DPYTHON_EXECUTABLE='/usr/bin/python3' .. && \
-     make -j4 && make install
+     make -j20 && make install
 
 # Install inekf library
 RUN source /opt/ros/humble/setup.bash && cd /home && git clone https://github.com/Rooholla-KhorramBakht/invariant-ekf.git && \
-    cd invariant-ekf && mkdir build && cd build && cmake -DPYTHON_EXECUTABLE='/usr/bin/python3' .. && make -j4 && make install
+    cd invariant-ekf && mkdir build && cd build && cmake -DPYTHON_EXECUTABLE='/usr/bin/python3' .. && make -j20 && make install
 
 
-RUN echo 'export PYTHON_PATH=$PYTHON_PATH:/usr/local/lib/python3.10/dist-packages/pinocchio/' >> ~/.bashrc
+RUN echo 'export PYTHONPATH=$PYTHON_PATH:/home/pinocchio/build/bindings/python' >> ~/.bashrc
 RUN echo 'export PYTHONPATH=$PYTHONPATH:/home/invariant-ekf/build/bindings/' >> ~/.bashrc
 RUN echo 'source /unitree_ros2/cyclonedds_ws/install/setup.bash' >> ~/.bashrc
 RUN mkdir -p /home/ros2_ws/src && cd /home/ros2_ws/src && git clone https://github.com/inria-paris-robotics-lab/go2_description.git
