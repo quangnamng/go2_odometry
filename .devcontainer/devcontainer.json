@@ -1,0 +1,18 @@
+// https://containers.dev/implementors/json_reference/
+{
+    "name": "go2py-inekf", 
+    "dockerComposeFile": "docker-compose.yaml",
+    "workspaceFolder": "/home/ros2_ws/",
+    "service": "go2py-inekf",
+    "remoteUser": "root", 
+    "postCreateCommand": "cd /home/ros2_ws/src",
+    "customizations": {
+      "vscode": {
+        "extensions": [
+          "dbaeumer.vscode-eslint", // Existing ESLint extension
+          "ms-python.python", // Python extension by Microsoft
+          "ms-toolsai.jupyter" // Jupyter extension by Microsoft
+        ]
+      }
+    }
+  }
