@@ -20,12 +20,14 @@ from tf2_ros import TransformBroadcaster
 from geometry_msgs.msg import TransformStamped
 from rcl_interfaces.msg import ParameterDescriptor as PD
 from inekf import RobotState, NoiseParams, InEKF, Kinematics
-from go2_description.loader import loadGo2
+from unitree_description.loader import loadGo2
 import time
 
 @dataclass
 class BodyTwistMsg(IdlStruct):
     twist: sequence[float32]
+    pos: sequence[float32]
+    quat: sequence[float32]
 
 # ==============================================================================
 # Main Class
@@ -293,11 +295,13 @@ class Inekf(Node):
         odom_msg.pose.pose.position.x = float(base_pose.translation[0])
         odom_msg.pose.pose.position.y = float(base_pose.translation[1])
         odom_msg.pose.pose.position.z = float(base_pose.translation[2])
+        base_pos = [base_pose.translation[0], base_pose.translation[1], base_pose.translation[2]]
 
         odom_msg.pose.pose.orientation.x = base_quaternion.x
         odom_msg.pose.pose.orientation.y = base_quaternion.y
         odom_msg.pose.pose.orientation.z = base_quaternion.z
         odom_msg.pose.pose.orientation.w = base_quaternion.w
+        base_quat = [base_quaternion.x, base_quaternion.y, base_quaternion.z, base_quaternion.w]
 
         odom_msg.twist.twist.linear.x = float(base_velocity.linear[0])
         odom_msg.twist.twist.linear.y = float(base_velocity.linear[1])
@@ -306,10 +310,10 @@ class Inekf(Node):
         odom_msg.twist.twist.angular.x = float(base_velocity.angular[0])
         odom_msg.twist.twist.angular.y = float(base_velocity.angular[1])
         odom_msg.twist.twist.angular.z = float(base_velocity.angular[2])
-        twist = [base_velocity.linear[0], base_velocity.linear[1], base_velocity.linear[2], base_velocity.angular[0], base_velocity.angular[1],  base_velocity.angular[2]]
+        base_twist = [base_velocity.linear[0], base_velocity.linear[1], base_velocity.linear[2], base_velocity.angular[0], base_velocity.angular[1],  base_velocity.angular[2]]
 
         self.odom_publisher.publish(odom_msg)
-        self.writer.write(BodyTwistMsg(twist=twist))
+        self.writer.write(BodyTwistMsg(twist=base_twist, pos=base_pos, quat=base_quat))
 
 
 def main(args=None):

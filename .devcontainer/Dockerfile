@@ -51,7 +51,10 @@ RUN source /opt/ros/humble/setup.bash && cd /home && git clone https://github.co
 RUN echo 'export PYTHONPATH=$PYTHON_PATH:/home/pinocchio/build/bindings/python' >> ~/.bashrc
 RUN echo 'export PYTHONPATH=$PYTHONPATH:/home/invariant-ekf/build/bindings/' >> ~/.bashrc
 RUN echo 'source /unitree_ros2/cyclonedds_ws/install/setup.bash' >> ~/.bashrc
-RUN mkdir -p /home/ros2_ws/src && cd /home/ros2_ws/src && git clone https://github.com/inria-paris-robotics-lab/go2_description.git
+RUN mkdir -p /home/ros2_ws/src && cd /home/ros2_ws/src && git clone https://github.com/inria-paris-robotics-lab/unitree_description.git
 
-# RUN export PYTHONPATH=$PYTHONPATH:/root/invariant-ekf/build/bindings/ 
+RUN export PYTHONPATH=$PYTHONPATH:/home/invariant-ekf/build/bindings/ 
+RUN cd /home/ros2_ws && colcon build
+RUN echo 'source /home/ros2_ws/install/setup.bash' >> ~/.bashrc
+RUN source /home/ros2_ws/install/setup.bash
 # set the entrypoint to bash
